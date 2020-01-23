@@ -1,0 +1,15 @@
+cartpole-impala:
+    env: CartPole-v0
+    run: IMPALA
+    config:
+        sample_batch_size: 5
+        train_batch_size: 5
+        num_workers: 3
+        num_envs_per_worker: 1
+        broadcast_interval: 2
+        num_gpus: 0
+        model:
+            fcnet_hiddens: [4096, 4096]
+        hoplite_config:
+            enable: False
+            skip_update: True

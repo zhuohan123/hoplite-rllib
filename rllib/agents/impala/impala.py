@@ -18,6 +18,8 @@ from ray.rllib.utils.annotations import override
 from ray.tune.trainable import Trainable
 from ray.tune.resources import Resources
 
+import ray.rllib.utils.hoplite as hoplite
+
 logger = logging.getLogger(__name__)
 
 # yapf: disable
@@ -91,6 +93,20 @@ DEFAULT_CONFIG = with_common_config({
     # Callback for APPO to use to update KL, target network periodically.
     # The input to the callback is the learner fetches dict.
     "after_train_step": None,
+    "hoplite_config": {
+        'enable': True,
+        'redis_address': hoplite.utils.get_my_address().encode(),
+        'redis_port': 6380,
+        'notification_port': 7777,
+        'notification_listening_port': 8888,
+        'plasma_socket': "/tmp/multicast_plasma".encode(),
+        'object_writer_port': 6666,
+        'grpc_port': 50055,
+        'skip_update': False
+    },
+    "custom_resources_per_worker": {
+        "node": 1,
+    }
 })
 # __sphinx_doc_end__
 # yapf: enable
@@ -112,7 +128,9 @@ class OverrideDefaultResourceRequest:
             extra_gpu=cf["num_gpus_per_worker"] * cf["num_workers"],
             extra_memory=cf["memory_per_worker"] * cf["num_workers"],
             extra_object_store_memory=cf["object_store_memory_per_worker"] *
-            cf["num_workers"])
+            cf["num_workers"],
+            custom_resources={"node": 1},
+            extra_custom_resources={"node": cf["num_workers"]})
 
 
 def make_learner_thread(local_worker, config):

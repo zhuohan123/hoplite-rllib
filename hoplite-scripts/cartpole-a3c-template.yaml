@@ -1,0 +1,27 @@
+cartpole-a3c:
+    env: CartPole-v0
+    run: A3C
+    config:
+        num_workers: 15
+        sample_batch_size: 5
+        use_pytorch: false
+        vf_loss_coeff: 0.5
+        entropy_coeff: 0.01
+        gamma: 0.99
+        grad_clip: 40.0
+        lambda: 1.0
+        lr: 0.0001
+        observation_filter: NoFilter
+        preprocessor_pref: rllib
+        model:
+            use_lstm: false
+            dim: 42
+            fcnet_hiddens: [4096, 4096]
+            fcnet_activation: relu
+            grayscale: true
+            zero_mean: false
+        hoplite_config:
+            enable: true
+        optimizer:
+            broadcast_interval: 8
+            use_hoplite: true
