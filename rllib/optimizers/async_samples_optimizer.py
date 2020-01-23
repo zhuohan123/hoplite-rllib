@@ -17,6 +17,8 @@ from ray.rllib.optimizers.policy_optimizer import PolicyOptimizer
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.timer import TimerStat
 
+import ray.rllib.utils.hoplite as hoplite
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,7 +46,8 @@ class AsyncSamplesOptimizer(PolicyOptimizer):
                  learner_queue_size=16,
                  learner_queue_timeout=300,
                  num_aggregation_workers=0,
-                 _fake_gpus=False):
+                 _fake_gpus=False,
+                 hoplite_config=None):
         PolicyOptimizer.__init__(self, workers)
 
         self._stats_start_time = time.time()
@@ -106,7 +109,8 @@ class AsyncSamplesOptimizer(PolicyOptimizer):
                 replay_buffer_num_slots=replay_buffer_num_slots,
                 train_batch_size=train_batch_size,
                 sample_batch_size=sample_batch_size,
-                broadcast_interval=broadcast_interval)
+                broadcast_interval=broadcast_interval,
+                hoplite_config=hoplite_config)
 
     def add_stat_val(self, key, val):
         if key not in self._last_stats_sum:
@@ -176,14 +180,17 @@ class AsyncSamplesOptimizer(PolicyOptimizer):
         sample_timesteps, train_timesteps = 0, 0
 
         for train_batch in self.aggregator.iter_train_batches():
+            # print("_step inqueue", train_batch.count)
             sample_timesteps += train_batch.count
             self.learner.inqueue.put(train_batch)
             if (self.learner.weights_updated
                     and self.aggregator.should_broadcast()):
+                # print('_step broadcast_new_weights')
                 self.aggregator.broadcast_new_weights()
 
         while not self.learner.outqueue.empty():
             count = self.learner.outqueue.get()
+            # print("_step outqueue", count)
             train_timesteps += count
 
         return sample_timesteps, train_timesteps

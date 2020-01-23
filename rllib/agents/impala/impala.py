@@ -12,6 +12,8 @@ from ray.rllib.utils.annotations import override
 from ray.tune.trainable import Trainable
 from ray.tune.resources import Resources
 
+import ray.rllib.utils.hoplite as hoplite
+
 # yapf: disable
 # __sphinx_doc_begin__
 DEFAULT_CONFIG = with_common_config({
@@ -83,6 +85,20 @@ DEFAULT_CONFIG = with_common_config({
 
     # use fake (infinite speed) sampler for testing
     "_fake_sampler": False,
+    "hoplite_config": {
+        'enable': True,
+        'redis_address': hoplite.utils.get_my_address().encode(),
+        'redis_port': 6380,
+        'notification_port': 7777,
+        'notification_listening_port': 8888,
+        'plasma_socket': "/tmp/multicast_plasma".encode(),
+        'object_writer_port': 6666,
+        'grpc_port': 50055,
+        'skip_update': False
+    },
+    "custom_resources_per_worker": {
+        "node": 1,
+    }
 })
 # __sphinx_doc_end__
 # yapf: enable
@@ -113,7 +129,6 @@ def make_aggregators_and_optimizer(workers, config):
     else:
         aggregators = None
     workers.add_workers(config["num_workers"])
-
     optimizer = AsyncSamplesOptimizer(
         workers,
         lr=config["lr"],
@@ -131,6 +146,7 @@ def make_aggregators_and_optimizer(workers, config):
         num_aggregation_workers=config["num_aggregation_workers"],
         learner_queue_size=config["learner_queue_size"],
         learner_queue_timeout=config["learner_queue_timeout"],
+        hoplite_config=config["hoplite_config"],
         **config["optimizer"])
 
     if aggregators:
@@ -155,7 +171,9 @@ class OverrideDefaultResourceRequest(object):
             extra_gpu=cf["num_gpus_per_worker"] * cf["num_workers"],
             extra_memory=cf["memory_per_worker"] * cf["num_workers"],
             extra_object_store_memory=cf["object_store_memory_per_worker"] *
-            cf["num_workers"])
+            cf["num_workers"],
+            custom_resources={"node": 1},
+            extra_custom_resources={"node": cf["num_workers"]})
 
 
 ImpalaTrainer = build_trainer(

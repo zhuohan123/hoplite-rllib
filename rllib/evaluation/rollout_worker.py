@@ -34,6 +34,10 @@ from ray.rllib.utils.filter import get_filter
 from ray.rllib.utils.tf_run_builder import TFRunBuilder
 from ray.rllib.utils import try_import_tf
 
+import ray.rllib.utils.hoplite as hoplite
+import threading
+import time
+
 tf = try_import_tf()
 logger = logging.getLogger(__name__)
 
@@ -449,6 +453,15 @@ class RolloutWorker(EvaluatorInterface):
         self.output_writer = output_creator(self.io_context)
         assert isinstance(self.output_writer, OutputWriter), self.output_writer
 
+        self.enable_hoplite = False
+        self.skip_update = False
+        if policy_config.get("hoplite_config", None) is not None:
+            print("have hoplite_config", policy_config["hoplite_config"], hoplite.utils.get_my_address())
+            self.enable_hoplite = policy_config["hoplite_config"]["enable"]
+            self.store = hoplite.utils.create_store_using_dict(policy_config["hoplite_config"])
+            self.skip_update = policy_config["hoplite_config"]["skip_update"]
+            print("successfully create store", self.store)
+
         logger.debug(
             "Created rollout worker with env {} ({}), policies {}".format(
                 self.async_env, self.env, self.policy_map))
@@ -522,18 +535,52 @@ class RolloutWorker(EvaluatorInterface):
     def get_weights(self, policies=None):
         if policies is None:
             policies = self.policy_map.keys()
-        return {
-            pid: policy.get_weights()
-            for pid, policy in self.policy_map.items() if pid in policies
-        }
+        if self.enable_hoplite:
+            # print(threading.get_ident(), "learner.get_weights starts")
+            all_data = []
+            all_data_meta = {}
+            cursor = 0
+            for pid, policy in self.policy_map.items():
+                if pid in policies:
+                    all_data_meta[pid] = []
+                    weights = policy.get_weights()
+                    for name, param in weights.items():
+                        param_meta = (name, param.shape, param.dtype, param.nbytes, cursor)
+                        all_data.append(param)
+                        all_data_meta[pid].append(param_meta)
+                        cursor += param.nbytes
+            cont_p = np.concatenate([p.ravel().view(np.uint8) for p in all_data])
+            buffer = hoplite.store_lib.Buffer.from_buffer(cont_p)
+            parameter_id = self.store.put(buffer)
+            # print(threading.get_ident(), "learner.get_weights ends", parameter_id.__reduce__())
+            # print(parameter_id, cont_p.size, cursor, all_data_meta)
+            return parameter_id, all_data_meta
+        else:
+            return {
+                pid: policy.get_weights()
+                for pid, policy in self.policy_map.items() if pid in policies
+            }
 
     @override(EvaluatorInterface)
     def set_weights(self, weights):
-        for pid, w in weights.items():
-            self.policy_map[pid].set_weights(w)
+        if self.enable_hoplite and isinstance(weights, tuple):
+            parameter_id, all_data_meta = weights
+            # print("learner.set_weights starts", parameter_id.__reduce__())
+            parameter_buffer = self.store.get(parameter_id)
+            view = memoryview(parameter_buffer)
+            for pid, meta in all_data_meta.items():
+                w = {}
+                for name, shape, dtype, nbytes, cursor in meta:
+                    tensor_view = view[cursor: cursor + nbytes]
+                    w[name] = np.frombuffer(tensor_view, dtype=dtype).reshape(shape)
+                self.policy_map[pid].set_weights(w)
+            # print("learner.set_weights ends", parameter_id.__reduce__())
+        else:
+            for pid, w in weights.items():
+                self.policy_map[pid].set_weights(w)
 
     @override(EvaluatorInterface)
-    def compute_gradients(self, samples):
+    def compute_gradients(self, samples, object_id=None):
         if log_once("compute_gradients"):
             logger.info("Compute gradients on:\n\n{}\n".format(
                 summarize(samples)))
@@ -562,10 +609,20 @@ class RolloutWorker(EvaluatorInterface):
         if log_once("grad_out"):
             logger.info("Compute grad info:\n\n{}\n".format(
                 summarize(info_out)))
+        if self.enable_hoplite:
+            grad_meta = []
+            cursor = 0
+            for param in grad_out:
+                grad_meta.append((param.shape, param.dtype, param.nbytes, cursor))
+                cursor += param.nbytes
+            cont_p = np.concatenate([p.ravel().view(np.uint8) for p in grad_out])
+            buffer = hoplite.store_lib.Buffer.from_buffer(cont_p)
+            self.store.put(buffer, object_id=object_id)
+            grad_out = grad_meta
         return grad_out, info_out
 
     @override(EvaluatorInterface)
-    def apply_gradients(self, grads):
+    def apply_gradients(self, grads, object_ids=None):
         if log_once("apply_gradients"):
             logger.info("Apply gradients:\n\n{}\n".format(summarize(grads)))
         if isinstance(grads, dict):
@@ -583,14 +640,30 @@ class RolloutWorker(EvaluatorInterface):
                     for pid, g in grads.items()
                 }
         else:
+            if self.enable_hoplite:
+                assert object_ids is not None
+                n_workers = len(object_ids)
+                object_id = self.store.reduce_async(object_ids, hoplite.store_lib.ReduceOp.SUM)
+                parameter_buffer = self.store.get(object_id)
+                view = memoryview(parameter_buffer)
+                grad_meta = grads
+                grads = []
+                for shape, dtype, nbytes, cursor in grad_meta:
+                    tensor_view = view[cursor: cursor + nbytes]
+                    grads.append(np.frombuffer(tensor_view, dtype=dtype).reshape(shape) / n_workers)
             return self.policy_map[DEFAULT_POLICY_ID].apply_gradients(grads)
 
     @override(EvaluatorInterface)
     def learn_on_batch(self, samples):
+        # print(threading.get_ident(), "learner.learn_on_batch starts")
         if log_once("learn_on_batch"):
             logger.info(
                 "Training on concatenated sample batches:\n\n{}\n".format(
                     summarize(samples)))
+        if self.skip_update:
+            # print(threading.get_ident(), "learner.learn_on_batch ends, skip_update")
+            time.sleep(0.02)
+            return {}
         if isinstance(samples, MultiAgentBatch):
             info_out = {}
             to_fetch = {}
@@ -613,6 +686,7 @@ class RolloutWorker(EvaluatorInterface):
                 samples)
         if log_once("learn_out"):
             logger.debug("Training out:\n\n{}\n".format(summarize(info_out)))
+        # print(threading.get_ident(), "learner.learn_on_batch ends")
         return info_out
 
     @DeveloperAPI

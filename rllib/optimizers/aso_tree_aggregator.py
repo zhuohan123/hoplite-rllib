@@ -53,6 +53,7 @@ class TreeAggregator(Aggregator):
             broadcast_interval (int): max number of workers to send the
                 same set of weights to
         """
+        print("in TreeAggregator!")
         self.workers = workers
         self.num_aggregation_workers = num_aggregation_workers
         self.max_sample_requests_in_flight_per_worker = \
