@@ -7,8 +7,6 @@ import ray
 from ray.rllib.utils.actors import TaskPool
 from ray.rllib.utils.annotations import override
 
-import ray.rllib.utils.hoplite as hoplite
-
 
 class Aggregator:
     """An aggregator collects and processes samples from workers.
@@ -55,7 +53,7 @@ class AggregationWorkerBase:
     def __init__(self, initial_weights_obj_id, remote_workers,
                  max_sample_requests_in_flight_per_worker, replay_proportion,
                  replay_buffer_num_slots, train_batch_size,
-                 rollout_fragment_length, hoplite_config=None):
+                 rollout_fragment_length):
         """Initialize an aggregator.
 
         Arguments:
@@ -191,7 +189,6 @@ class SimpleAggregator(AggregationWorkerBase, Aggregator):
                  rollout_fragment_length=50,
                  broadcast_interval=5,
                  hoplite_config=None):
-        print("in SimpleAggregator!", hoplite.utils.get_my_address(), hoplite_config)
         self.workers = workers
         self.local_worker = workers.local_worker()
         self.broadcast_interval = broadcast_interval
@@ -199,8 +196,7 @@ class SimpleAggregator(AggregationWorkerBase, Aggregator):
         AggregationWorkerBase.__init__(
             self, self.broadcasted_weights, self.workers.remote_workers(),
             max_sample_requests_in_flight_per_worker, replay_proportion,
-            replay_buffer_num_slots, train_batch_size, rollout_fragment_length,
-            hoplite_config)
+            replay_buffer_num_slots, train_batch_size, rollout_fragment_length)
 
     @override(Aggregator)
     def broadcast_new_weights(self):

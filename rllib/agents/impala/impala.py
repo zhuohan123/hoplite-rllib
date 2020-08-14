@@ -18,7 +18,7 @@ from ray.rllib.utils.annotations import override
 from ray.tune.trainable import Trainable
 from ray.tune.resources import Resources
 
-import ray.rllib.utils.hoplite as hoplite
+from ray.rllib.utils import hoplite
 
 logger = logging.getLogger(__name__)
 

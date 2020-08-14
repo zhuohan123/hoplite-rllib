@@ -35,7 +35,7 @@ from ray.rllib.utils.sgd import do_minibatch_sgd
 from ray.rllib.utils.tf_run_builder import TFRunBuilder
 from ray.rllib.utils import try_import_tf, try_import_torch
 
-import ray.rllib.utils.hoplite as hoplite
+from ray.rllib.utils import hoplite
 import threading
 import time
 

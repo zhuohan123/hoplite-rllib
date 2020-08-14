@@ -13,8 +13,6 @@ from ray.rllib.optimizers.policy_optimizer import PolicyOptimizer
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils.timer import TimerStat
 
-import ray.rllib.utils.hoplite as hoplite
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,8 +40,7 @@ class AsyncSamplesOptimizer(PolicyOptimizer):
                  learner_queue_size=16,
                  learner_queue_timeout=300,
                  num_aggregation_workers=0,
-                 _fake_gpus=False,
-                 hoplite_config=None):
+                 _fake_gpus=False):
         PolicyOptimizer.__init__(self, workers)
 
         self._stats_start_time = time.time()
@@ -105,8 +102,7 @@ class AsyncSamplesOptimizer(PolicyOptimizer):
                 replay_buffer_num_slots=replay_buffer_num_slots,
                 train_batch_size=train_batch_size,
                 rollout_fragment_length=rollout_fragment_length,
-                broadcast_interval=broadcast_interval,
-                hoplite_config=hoplite_config)
+                broadcast_interval=broadcast_interval)
 
     def add_stat_val(self, key, val):
         if key not in self._last_stats_sum:
