@@ -7,11 +7,11 @@ sudo fuser -k 50055/tcp -s &> /dev/null
 
 my_address=$(ifconfig | grep 'inet.*broadcast' | awk '{print $2}')
 
-hoplite_path=/home/ubuntu/efs/zhuohan/object_store
+hoplite_path=/home/ubuntu/efs/object_store
 
 pkill notification
 sleep 1
-$hoplite_path/notification $my_address &
+$hoplite_path/build/notification $my_address &
 sleep 1
 
 log_file=log/$1-$(date +"%Y%m%d-%H%M%S").log

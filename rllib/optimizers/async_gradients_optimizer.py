@@ -47,7 +47,7 @@ class AsyncGradientsOptimizer(PolicyOptimizer):
         # Kick off the first wave of async tasks
         for e in self.workers.remote_workers():
             e.set_weights.remote(weights)
-            object_id = hoplite.utils.random_object_id()
+            object_id = hoplite.random_object_id()
             future = e.compute_gradients.remote(e.sample.remote(), object_id)
             pending_gradients[future] = e
             object_ids[future] = object_id
@@ -88,7 +88,7 @@ class AsyncGradientsOptimizer(PolicyOptimizer):
                         if weights is None:
                             weights = self.workers.local_worker().get_weights()
                         e.set_weights.remote(weights)
-                        object_id = hoplite.utils.random_object_id()
+                        object_id = hoplite.random_object_id()
                         future = e.compute_gradients.remote(e.sample.remote(), object_id)
                         pending_gradients[future] = e
                         object_ids[future] = object_id

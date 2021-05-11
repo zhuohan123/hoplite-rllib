@@ -95,7 +95,7 @@ DEFAULT_CONFIG = with_common_config({
     "after_train_step": None,
     "hoplite_config": {
         'enable': True,
-        'redis_address': hoplite.utils.get_my_address().encode(),
+        'redis_address': hoplite.get_my_address().encode(),
         'redis_port': 6380,
         'notification_port': 7777,
         'notification_listening_port': 8888,

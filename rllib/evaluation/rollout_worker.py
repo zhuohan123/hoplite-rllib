@@ -506,9 +506,9 @@ class RolloutWorker(ParallelIteratorWorker):
         self.enable_hoplite = False
         self.skip_update = False
         if policy_config.get("hoplite_config", None) is not None:
-            print("have hoplite_config", policy_config["hoplite_config"], hoplite.utils.get_my_address())
+            print("have hoplite_config", policy_config["hoplite_config"], hoplite.get_my_address())
             self.enable_hoplite = policy_config["hoplite_config"]["enable"]
-            self.store = hoplite.utils.create_store_using_dict(policy_config["hoplite_config"])
+            self.store = hoplite.create_store_using_dict(policy_config["hoplite_config"])
             self.skip_update = policy_config["hoplite_config"]["skip_update"]
             print("successfully create store", self.store)
 
@@ -615,7 +615,7 @@ class RolloutWorker(ParallelIteratorWorker):
                         all_data_meta[pid].append(param_meta)
                         cursor += param.nbytes
             cont_p = np.concatenate([p.ravel().view(np.uint8) for p in all_data])
-            buffer = hoplite.store_lib.Buffer.from_buffer(cont_p)
+            buffer = hoplite.Buffer.from_buffer(cont_p)
             parameter_id = self.store.put(buffer)
             # print(threading.get_ident(), "learner.get_weights ends", parameter_id.__reduce__())
             # print(parameter_id, cont_p.size, cursor, all_data_meta)
@@ -707,7 +707,7 @@ class RolloutWorker(ParallelIteratorWorker):
                 grad_meta.append((param.shape, param.dtype, param.nbytes, cursor))
                 cursor += param.nbytes
             cont_p = np.concatenate([p.ravel().view(np.uint8) for p in grad_out])
-            buffer = hoplite.store_lib.Buffer.from_buffer(cont_p)
+            buffer = hoplite.Buffer.from_buffer(cont_p)
             self.store.put(buffer, object_id=object_id)
             grad_out = grad_meta
         return grad_out, info_out
@@ -741,7 +741,7 @@ class RolloutWorker(ParallelIteratorWorker):
             if self.enable_hoplite:
                 assert object_ids is not None
                 n_workers = len(object_ids)
-                object_id = self.store.reduce_async(object_ids, hoplite.store_lib.ReduceOp.SUM)
+                object_id = self.store.reduce_async(object_ids, hoplite.ReduceOp.SUM)
                 parameter_buffer = self.store.get(object_id)
                 view = memoryview(parameter_buffer)
                 grad_meta = grads
