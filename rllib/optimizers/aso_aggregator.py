@@ -194,7 +194,7 @@ class SimpleAggregator(AggregationWorkerBase, Aggregator):
                  sample_batch_size=50,
                  broadcast_interval=5,
                  hoplite_config=None):
-        print("in SimpleAggregator!", hoplite.utils.get_my_address(), hoplite_config)
+        print("in SimpleAggregator!", hoplite.get_my_address(), hoplite_config)
         self.workers = workers
         self.local_worker = workers.local_worker()
         self.broadcast_interval = broadcast_interval

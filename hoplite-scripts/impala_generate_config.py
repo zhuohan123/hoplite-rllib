@@ -6,7 +6,8 @@ with open("cartpole-impala-template.yaml", "r") as f:
 
 print(template)
 
-for num_workers in [3, 7, 11, 15]:
+# for num_workers in [3, 7, 11, 15]:
+for num_workers in [7, 15]:
     # for broadcast_interval in [2, 4, 6, 8]:
     broadcast_interval = (num_workers + 1) // 2
     for hoplite in [True, False]:

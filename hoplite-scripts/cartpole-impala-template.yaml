@@ -11,5 +11,5 @@ cartpole-impala:
         model:
             fcnet_hiddens: [4096, 4096]
         hoplite_config:
-            enable: False
+            enable: True
             skip_update: True

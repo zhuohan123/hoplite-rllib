@@ -48,7 +48,7 @@ DEFAULT_CONFIG = with_common_config({
         'skip_update': False
     },
     "custom_resources_per_worker": {
-        "node": 1,
+        "machine": 1,
     },
     "optimizer": {
         "broadcast_interval": 4,
@@ -97,8 +97,8 @@ class OverrideDefaultResourceRequest(object):
             extra_memory=cf["memory_per_worker"] * cf["num_workers"],
             extra_object_store_memory=cf["object_store_memory_per_worker"] *
             cf["num_workers"],
-            custom_resources={"node": 1},
-            extra_custom_resources={"node": cf["num_workers"]})
+            custom_resources={"machine": 1},
+            extra_custom_resources={"machine": cf["num_workers"]})
 
 
 A3CTrainer = build_trainer(
