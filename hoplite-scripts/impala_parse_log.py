@@ -12,7 +12,7 @@ all_results = []
 
 for log_file in os.listdir(log_dir):
     file_name = log_file.split(".")
-    if log_file.startswith("generated") and file_name[1] == "yaml-latest":
+    if log_file.startswith("generated-cartpole-impala") and file_name[1] == "yaml-latest":
         config = file_name[0].split("-")
         with open(os.path.join(log_dir, log_file), "r") as f:
             results = []

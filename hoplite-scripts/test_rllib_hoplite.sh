@@ -20,6 +20,7 @@ log_latest=log/$1-latest.log
 
 mkdir -p log
 
+pkill rllib
 rllib train -v -f $1 --ray-address "auto" 2>&1 | tee -a ${log_file} &
 
 ln -sfn $(realpath ${log_file}) ${log_latest}
