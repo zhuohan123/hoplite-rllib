@@ -7,7 +7,7 @@ sudo fuser -k 50055/tcp -s &> /dev/null
 
 my_address=$(ifconfig | grep 'inet.*broadcast' | awk '{print $2}')
 
-hoplite_path=/home/ubuntu/efs/hoplite
+hoplite_path=/home/ubuntu/hoplite
 
 pkill notification
 sleep 1
@@ -26,3 +26,4 @@ rllib train -v -f $1 --ray-address "auto" 2>&1 | tee -a ${log_file} &
 ln -sfn $(realpath ${log_file}) ${log_latest}
 
 sleep 240
+pkill rllib
